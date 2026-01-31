@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SurakshaSetu - AI-Powered Security System
 
 ## 🚀 Overview
@@ -564,3 +565,6 @@ This project is developed for hackathon purposes. Use freely for educational and
 ---
 
 **Made with ❤️ for Security Innovation**
+=======
+# SurakshaSetu
+>>>>>>> 6d87d98e40bbaed38739356a294780859740ce02
