@@ -1,183 +1,95 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Maximize2, Volume2, VolumeX } from 'lucide-react';
+import React, { useState } from 'react';
+import { Maximize2, AlertTriangle, VideoOff, Volume2, VolumeX } from 'lucide-react';
+import Modal from '../components/Modal';
+import clsx from 'clsx';
 
-export default function LiveMonitoring({ websocket, alertNotifications }) {
-  const [cameraFrames, setCameraFrames] = useState({});
+export default function LiveMonitoring({ cameraFrames = {}, alertingCameras = {} }) {
   const [selectedCamera, setSelectedCamera] = useState(null);
-  const [alertingCameras, setAlertingCameras] = useState({});
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const alertSoundRef = useRef(null);
 
   const cameras = [
     { id: 1, name: 'Entry Gate', location: 'Main Entrance' },
     { id: 2, name: 'Lobby', location: 'Ground Floor' },
     { id: 3, name: 'Access Point', location: 'Stairwell' },
     { id: 4, name: 'Parking', location: 'Level B1' },
-    { id: 0, name: 'Webcam', location: 'Local System' }
+    { id: 0, name: 'Webcam', location: 'Local System' },
+    { id: 5, name: 'Perimeter', location: 'North Wall' }, // Placeholder for 6th slot
   ];
 
-  // Handle WebSocket frame updates
-  useEffect(() => {
-    if (!websocket) return;
-
-    const originalOnMessage = websocket.onmessage;
-    websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        if (data.type === 'FRAME') {
-          setCameraFrames(prev => ({
-            ...prev,
-            [data.camera_id]: data.frame
-          }));
-        } else if (data.type === 'ALERT' && data.incident_type === 'TAILGATING') {
-          // Add camera to alerting list
-          setAlertingCameras(prev => ({
-            ...prev,
-            [data.camera_id]: {
-              severity: data.severity,
-              timestamp: new Date(),
-              message: data.message
-            }
-          }));
-
-          // Play alert sound
-          if (soundEnabled && data.severity === 'HIGH') {
-            playAlertSound();
-          }
-
-          // Clear alert after 5 seconds
-          setTimeout(() => {
-            setAlertingCameras(prev => {
-              const updated = { ...prev };
-              delete updated[data.camera_id];
-              return updated;
-            });
-          }, 5000);
-        }
-      } catch (e) {
-        console.error('Error parsing WebSocket message:', e);
-      }
-    };
-
-    return () => {
-      websocket.onmessage = originalOnMessage;
-    };
-  }, [websocket, soundEnabled]);
-
-  const playAlertSound = () => {
-    try {
-      // Create a simple beep sound using Web Audio API
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const now = audioContext.currentTime;
-      
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      
-      oscillator.frequency.value = 1000;
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-      
-      oscillator.start(now);
-      oscillator.stop(now + 0.5);
-    } catch (e) {
-      console.error('Error playing sound:', e);
-    }
-  };
-
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">Live Monitoring</h1>
+    <div className="space-y-6">
+      {/* Header Controls */}
+      <div className="flex justify-end">
         <button
           onClick={() => setSoundEnabled(!soundEnabled)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
+          className={clsx(
+            "flex items-center gap-2 px-4 py-2 rounded-lg border transition-all text-sm font-medium",
             soundEnabled
-              ? 'bg-green-600/20 border-green-500 text-green-300 hover:bg-green-600/30'
-              : 'bg-gray-600/20 border-gray-500 text-gray-300 hover:bg-gray-600/30'
-          }`}
-        >
-          {soundEnabled ? (
-            <Volume2 className="w-4 h-4" />
-          ) : (
-            <VolumeX className="w-4 h-4" />
+              ? "bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20"
+              : "bg-dark-800 border-dark-700 text-gray-400 hover:bg-dark-700"
           )}
-          <span className="text-sm font-medium">
-            {soundEnabled ? 'Sound: ON' : 'Sound: OFF'}
-          </span>
+        >
+          {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          {soundEnabled ? 'Alert Sound: ON' : 'Alert Sound: OFF'}
         </button>
       </div>
 
-      {/* Camera Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {cameras.map(camera => {
-          const isAlerting = alertingCameras[camera.id];
+      {/* 3x2 Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cameras.map((camera) => {
           const frame = cameraFrames[camera.id];
+          const alert = alertingCameras[camera.id];
+          const isAlerting = !!alert;
 
           return (
             <div
               key={camera.id}
               onClick={() => setSelectedCamera(camera)}
-              className={`relative rounded-lg border overflow-hidden cursor-pointer transition-all transform hover:scale-105 ${
+              className={clsx(
+                "group relative aspect-video bg-black rounded-xl overflow-hidden cursor-pointer border transition-all duration-300",
                 isAlerting
-                  ? 'border-red-500 shadow-lg shadow-red-500/50 animate-pulse'
-                  : 'border-[#1a1a3e] hover:border-[#2a2a5e]'
-              }`}
+                  ? "border-red-500 shadow-neon-red animate-pulse-slow"
+                  : "border-dark-700 hover:border-primary-500 hover:shadow-lg"
+              )}
             >
-              {/* Camera Feed or Placeholder */}
-              <div className="relative w-full bg-black aspect-video flex items-center justify-center overflow-hidden">
-                {frame ? (
-                  <img
-                    src={`data:image/jpeg;base64,${frame}`}
-                    alt={`Camera ${camera.id}`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#1a1a3e] to-[#0f0f23] flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-12 h-12 rounded-full border-2 border-gray-600 border-t-blue-500 animate-spin mx-auto mb-2"></div>
-                      <p className="text-gray-400 text-sm">Loading...</p>
-                    </div>
-                  </div>
-                )}
+              {/* Video Feed */}
+              {frame ? (
+                <img
+                  src={`data:image/jpeg;base64,${frame}`}
+                  alt={camera.name}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600 bg-dark-800">
+                  <VideoOff className="w-10 h-10 mb-2 opacity-50" />
+                  <span className="text-xs font-medium uppercase tracking-wider">No Signal</span>
+                </div>
+              )}
 
-                {/* Alert Overlay */}
-                {isAlerting && (
-                  <div className="absolute inset-0 bg-red-600/30 flex items-center justify-center backdrop-blur-sm">
-                    <div className="text-center">
-                      <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-2 animate-bounce" />
-                      <p className="text-white font-bold text-lg">ALERT</p>
-                      <p className="text-red-200 text-sm">TAILGATING DETECTED</p>
-                    </div>
-                  </div>
-                )}
+              {/* Overlays */}
+              <div className="absolute inset-x-0 top-0 p-4 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-start opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div>
+                  <h3 className="text-white font-bold text-sm">{camera.name}</h3>
+                  <p className="text-xs text-gray-300">{camera.location}</p>
+                </div>
+                <div className={clsx("w-2 h-2 rounded-full", isAlerting ? "bg-red-500 animate-ping" : "bg-green-500")} />
+              </div>
 
-                {/* Camera Header */}
-                <div className="absolute top-0 inset-x-0 bg-gradient-to-b from-black/80 to-transparent p-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-bold text-white text-sm">{camera.name}</h3>
-                      <p className="text-xs text-gray-300">{camera.location}</p>
-                    </div>
-                    <div className={`w-3 h-3 rounded-full ${
-                      isAlerting ? 'bg-red-500 animate-pulse' : 'bg-green-500'
-                    }`}></div>
+              {/* Alert Overlay */}
+              {isAlerting && (
+                <div className="absolute inset-0 bg-red-500/20 backdrop-blur-[2px] flex items-center justify-center pointer-events-none animate-fade-in">
+                  <div className="bg-black/60 px-4 py-2 rounded-lg flex items-center gap-2 border border-red-500/50">
+                    <AlertTriangle className="w-5 h-5 text-red-500 animate-bounce" />
+                    <span className="text-red-500 font-bold tracking-wider">TAILGATING DETECTED</span>
                   </div>
                 </div>
+              )}
 
-                {/* Fullscreen Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedCamera(camera);
-                  }}
-                  className="absolute bottom-3 right-3 bg-black/50 hover:bg-black/70 p-2 rounded-lg transition-all"
-                >
-                  <Maximize2 className="w-4 h-4 text-white" />
-                </button>
+              {/* Hover Actions */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                <div className="bg-black/50 p-3 rounded-full backdrop-blur-sm transform scale-75 group-hover:scale-100 transition-transform">
+                  <Maximize2 className="w-6 h-6 text-white" />
+                </div>
               </div>
             </div>
           );
@@ -185,69 +97,44 @@ export default function LiveMonitoring({ websocket, alertNotifications }) {
       </div>
 
       {/* Fullscreen Modal */}
-      {selectedCamera && (
-        <div
-          onClick={() => setSelectedCamera(null)}
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            className="relative w-full max-w-4xl bg-black rounded-lg overflow-hidden"
-          >
-            <div className="aspect-video flex items-center justify-center">
-              {cameraFrames[selectedCamera.id] ? (
-                <img
-                  src={`data:image/jpeg;base64,${cameraFrames[selectedCamera.id]}`}
-                  alt={selectedCamera.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full border-4 border-gray-600 border-t-blue-500 animate-spin mx-auto mb-4"></div>
-                  <p className="text-gray-400">Loading live feed...</p>
-                </div>
-              )}
+      <Modal
+        isOpen={!!selectedCamera}
+        onClose={() => setSelectedCamera(null)}
+        title={selectedCamera?.name || 'Camera Feed'}
+        size="xl"
+      >
+        <div className="aspect-video bg-black rounded-lg overflow-hidden relative border border-dark-700">
+          {selectedCamera && cameraFrames[selectedCamera.id] ? (
+            <img
+              src={`data:image/jpeg;base64,${cameraFrames[selectedCamera.id]}`}
+              alt="Fullscreen Feed"
+              className="w-full h-full object-contain"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              <span className="animate-pulse">Loading live feed...</span>
             </div>
+          )}
+        </div>
 
-            <div className="bg-[#0f0f23] border-t border-[#1a1a3e] p-4">
-              <h2 className="text-xl font-bold text-white">{selectedCamera.name}</h2>
-              <p className="text-gray-400 text-sm">{selectedCamera.location}</p>
-            </div>
-
-            <button
-              onClick={() => setSelectedCamera(null)}
-              className="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 px-4 py-2 rounded-lg text-white font-medium transition-all"
-            >
-              Close
-            </button>
+        {/* Camera Details */}
+        <div className="mt-4 grid grid-cols-3 gap-4">
+          <div className="bg-dark-800 p-3 rounded-lg">
+            <span className="text-xs text-gray-500 block">Status</span>
+            <span className="text-green-400 font-medium text-sm flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Online
+            </span>
+          </div>
+          <div className="bg-dark-800 p-3 rounded-lg">
+            <span className="text-xs text-gray-500 block">Stream Quality</span>
+            <span className="text-white font-medium text-sm">1080p HD</span>
+          </div>
+          <div className="bg-dark-800 p-3 rounded-lg">
+            <span className="text-xs text-gray-500 block">AI Detection</span>
+            <span className="text-blue-400 font-medium text-sm">Active</span>
           </div>
         </div>
-      )}
-
-      {/* Alert History */}
-      {alertNotifications.length > 0 && (
-        <div className="bg-[#0f0f23] rounded-lg border border-[#1a1a3e] p-6">
-          <h2 className="text-lg font-bold text-white mb-4">Recent Alerts</h2>
-          <div className="space-y-3">
-            {alertNotifications.map(alert => (
-              <div
-                key={alert.alert_id}
-                className="flex items-center justify-between p-3 bg-red-600/10 border border-red-500 rounded-lg"
-              >
-                <div className="flex-1">
-                  <p className="font-semibold text-red-300">{alert.message}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {new Date(alert.timestamp).toLocaleTimeString()}
-                  </p>
-                </div>
-                <span className="px-3 py-1 bg-red-500 text-white rounded text-xs font-bold">
-                  {alert.severity}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

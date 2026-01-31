@@ -1,0 +1,27 @@
+
+# General
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# Environment variables
+.env
+.env.*
+
+# Dependencies
+node_modules/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Database
+*.sqlite3
+*.db
+surakshasetu.db
+
+# Large files
+*.pt
+*.pth
+*.onnx

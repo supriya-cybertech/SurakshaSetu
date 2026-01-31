@@ -1,174 +1,152 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, Users, Camera, TrendingUp } from 'lucide-react';
+import KPICard from '../components/KPICard';
+import { AlertCircle, UserCheck, Camera, Activity, Shield } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import StatusBadge from '../components/StatusBadge';
 
-export default function Dashboard({ stats, alerts }) {
-  const [weeklyData, setWeeklyData] = useState([]);
-  const [hourlyData, setHourlyData] = useState([]);
+// Mock Data for Charts
+const weeklyData = [
+  { name: 'Mon', incidents: 4 },
+  { name: 'Tue', incidents: 3 },
+  { name: 'Wed', incidents: 7 },
+  { name: 'Thu', incidents: 2 },
+  { name: 'Fri', incidents: 5 },
+  { name: 'Sat', incidents: 8 },
+  { name: 'Sun', incidents: 6 },
+];
+
+const hourlyData = [
+  { name: '08:00', entries: 12 },
+  { name: '10:00', entries: 45 },
+  { name: '12:00', entries: 35 },
+  { name: '14:00', entries: 20 },
+  { name: '16:00', entries: 55 },
+  { name: '18:00', entries: 30 },
+];
+
+export default function Dashboard({ stats }) {
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Generate sample data for weekly trend
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    setWeeklyData(days.map((day, i) => ({
-      name: day,
-      incidents: Math.floor(Math.random() * 8) + 2,
-      unauthorized: Math.floor(Math.random() * 5)
-    })));
-
-    // Generate hourly data
-    const hours = Array.from({ length: 24 }, (_, i) => ({
-      name: `${i}:00`,
-      entries: Math.floor(Math.random() * 50) + 10
-    }));
-    setHourlyData(hours);
+    setMounted(true);
   }, []);
 
-  const kpiCards = [
-    {
-      label: 'Total Incidents',
-      value: stats.total_incidents || 23,
-      color: 'red',
-      icon: AlertTriangle
-    },
-    {
-      label: 'Authorized Entries',
-      value: stats.authorized_entries || 1463,
-      color: 'green',
-      icon: Users
-    },
-    {
-      label: 'Active Cameras',
-      value: `${stats.active_cameras || 5}/${stats.total_cameras || 5}`,
-      color: 'blue',
-      icon: Camera
-    },
-    {
-      label: 'Accuracy',
-      value: `${stats.system_accuracy || 94.2}%`,
-      color: 'yellow',
-      icon: TrendingUp
-    }
-  ];
+  if (!mounted) return null;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpiCards.map((card, idx) => {
-          const Icon = card.icon;
-          const colorClasses = {
-            red: 'from-red-600 to-red-700 border-red-500',
-            green: 'from-green-600 to-green-700 border-green-500',
-            blue: 'from-blue-600 to-blue-700 border-blue-500',
-            yellow: 'from-yellow-600 to-yellow-700 border-yellow-500'
-          };
-
-          return (
-            <div
-              key={idx}
-              className={`bg-gradient-to-br ${colorClasses[card.color]} rounded-lg border p-6 shadow-lg hover:shadow-xl transition-all transform hover:scale-105`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-200 text-sm font-medium">{card.label}</p>
-                  <p className="text-3xl font-bold text-white mt-2">{card.value}</p>
-                </div>
-                <Icon className="w-12 h-12 text-white/30" />
-              </div>
-            </div>
-          );
-        })}
+    <div className="space-y-6">
+      {/* KPI Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KPICard
+          title="Total Incidents"
+          value={stats?.total_incidents || 0}
+          icon={AlertCircle}
+          trend="up"
+          trendValue="12%"
+          color="red"
+        />
+        <KPICard
+          title="Authorized Entries"
+          value={stats?.authorized_entries || 0}
+          icon={UserCheck}
+          trend="up"
+          trendValue="8%"
+          color="green"
+        />
+        <KPICard
+          title="Active Cameras"
+          value={`${stats?.active_cameras || 0} / ${stats?.total_cameras || 5}`}
+          icon={Camera}
+          color="blue"
+        />
+        <KPICard
+          title="System Accuracy"
+          value={`${stats?.system_accuracy || 98.5}%`}
+          icon={Activity}
+          trend="up"
+          trendValue="0.5%"
+          color="amber"
+        />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly Incident Trend */}
-        <div className="bg-[#0f0f23] rounded-lg border border-[#1a1a3e] p-6">
-          <h2 className="text-lg font-bold text-white mb-4">Weekly Incident Trend</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={weeklyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e" />
-              <XAxis dataKey="name" stroke="#888" />
-              <YAxis stroke="#888" />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1a1a3e', border: '1px solid #ff4444' }}
-                labelStyle={{ color: '#fff' }}
-              />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="incidents" 
-                stroke="#ef4444" 
-                strokeWidth={2}
-                dot={{ fill: '#ef4444', r: 5 }}
-                activeDot={{ r: 7 }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="unauthorized" 
-                stroke="#f97316" 
-                strokeWidth={2}
-                dot={{ fill: '#f97316', r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Chart */}
+        <div className="lg:col-span-2 glass-card p-6 min-h-[400px]">
+          <h3 className="text-lg font-bold text-white mb-6">Weekly Incident Overview</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={weeklyData}>
+                <defs>
+                  <linearGradient id="colorIncidents" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                <XAxis dataKey="name" stroke="#9CA3AF" tick={{ fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <YAxis stroke="#9CA3AF" tick={{ fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                  itemStyle={{ color: '#F3F4F6' }}
+                />
+                <Area type="monotone" dataKey="incidents" stroke="#EF4444" strokeWidth={3} fillOpacity={1} fill="url(#colorIncidents)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        {/* Entry Activity by Hour */}
-        <div className="bg-[#0f0f23] rounded-lg border border-[#1a1a3e] p-6">
-          <h2 className="text-lg font-bold text-white mb-4">Entry Activity by Hour</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={hourlyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1a3e" />
-              <XAxis dataKey="name" stroke="#888" tick={{ fontSize: 12 }} />
-              <YAxis stroke="#888" />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1a1a3e', border: '1px solid #4444ff' }}
-                labelStyle={{ color: '#fff' }}
-              />
-              <Bar 
-                dataKey="entries" 
-                fill="#3b82f6" 
-                radius={[8, 8, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Side Chart */}
+        <div className="glass-card p-6 min-h-[400px]">
+          <h3 className="text-lg font-bold text-white mb-6">Visitor Traffic</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hourlyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                <XAxis dataKey="name" stroke="#9CA3AF" tick={{ fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                  itemStyle={{ color: '#F3F4F6' }}
+                  cursor={{ fill: '#374151', opacity: 0.4 }}
+                />
+                <Bar dataKey="entries" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      {/* Recent Alerts */}
-      <div className="bg-[#0f0f23] rounded-lg border border-[#1a1a3e] p-6">
-        <h2 className="text-lg font-bold text-white mb-4">Recent Alerts</h2>
-        <div className="space-y-3 max-h-64 overflow-y-auto">
-          {alerts.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">No alerts at the moment</p>
-          ) : (
-            alerts.slice(0, 10).map((alert, idx) => (
-              <div 
-                key={idx}
-                className={`flex items-center justify-between p-3 rounded-lg border ${
-                  alert.severity === 'HIGH' ? 'bg-red-600/10 border-red-500' :
-                  alert.severity === 'MEDIUM' ? 'bg-yellow-600/10 border-yellow-500' :
-                  'bg-blue-600/10 border-blue-500'
-                }`}
-              >
-                <div className="flex-1">
-                  <p className="font-semibold text-white text-sm">{alert.incident_type}</p>
-                  <p className="text-xs text-gray-300 mt-1">{alert.message || alert.additional_info}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded text-xs font-bold ${
-                    alert.severity === 'HIGH' ? 'bg-red-500 text-white' :
-                    alert.severity === 'MEDIUM' ? 'bg-yellow-500 text-black' :
-                    'bg-blue-500 text-white'
-                  }`}>
-                    {alert.severity}
-                  </span>
-                  <span className="text-xs text-gray-400">Camera {alert.camera_id}</span>
-                </div>
-              </div>
-            ))
-          )}
+      {/* Recent Activity Mini-Table */}
+      <div className="glass-card overflow-hidden">
+        <div className="p-6 border-b border-white/5 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-white">Recent System Activity</h3>
+          <button className="text-sm text-primary-400 hover:text-primary-300 transition-colors">View All Logs</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-white/5 text-gray-400 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="p-4 font-medium">Timestamp</th>
+                <th className="p-4 font-medium">Event Type</th>
+                <th className="p-4 font-medium">Camera</th>
+                <th className="p-4 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-sm">
+              {[1, 2, 3].map((_, i) => (
+                <tr key={i} className="hover:bg-white/5 transition-colors">
+                  <td className="p-4 text-gray-300">Today, 10:4{i} AM</td>
+                  <td className="p-4 text-white font-medium flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-primary-400" />
+                    Authorized Entry
+                  </td>
+                  <td className="p-4 text-gray-400">Main Entrance</td>
+                  <td className="p-4">
+                    <StatusBadge status="success" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
