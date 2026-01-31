@@ -25,3 +25,7 @@ surakshasetu.db
 *.pt
 *.pth
 *.onnx
+
+# WhatsApp Session
+.wwebjs_auth/
+.wwebjs_cache/

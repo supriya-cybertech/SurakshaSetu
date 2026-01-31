@@ -27,6 +27,7 @@ from config import CAMERA_CONFIG
 from AI_ML.tailgating_logic import TailgatingDetector, TailgatingAlert
 from AI_ML.ai_ml_utils import FrameProcessor, ResidentDatabase
 from SECURITY.visitor_otp_system import otp_system, rfid_auth, VisitorStatus
+from agent_mode.agent_core import SurakshaSetuAgent
 
 # Logging setup
 logging.basicConfig(
@@ -85,6 +86,7 @@ class SystemState:
                     logger.error(f"Failed to broadcast to client: {e}")
 
 system_state = SystemState()
+agent = SurakshaSetuAgent()
 
 
 # ==================== UTILITY FUNCTIONS ====================
@@ -186,6 +188,25 @@ async def handle_tailgating_alert(alert: TailgatingAlert, db=None):
     
     # Use manager broadcast for WebSocket clients
     await manager.broadcast(alert_payload)
+
+    # Notify Agent
+    if agent and agent.is_active:
+        snapshot_abs_path = None
+        if snapshot_path:
+            import os
+            snapshot_abs_path = os.path.abspath(snapshot_path)
+            
+        agent.handle_security_event({
+            "type": "TAILGATING",
+            "timestamp": alert.timestamp.isoformat(),
+            "location": f"Camera {alert.camera_id}",
+            "total_people": alert.persons_detected,
+            "authorized_count": alert.persons_authorized,
+            "unauthorized_count": alert.persons_unauthorized,
+            "authorized_names": [str(pid) for pid in db.get_collection('residents').find({"id": {"$in": []}})] if db else [], # Simplified
+            "snapshot_path": snapshot_abs_path,
+            "camera_id": alert.camera_id
+        })
     
     return alert_payload
 
@@ -275,6 +296,21 @@ def process_camera_stream(camera_id: int, stream_url: str, db_session=None):
                     }
                     if main_loop:
                         asyncio.run_coroutine_threadsafe(manager.broadcast(weapon_data), main_loop)
+                    
+                    # Notify Agent
+                    if agent and agent.is_active:
+                         # Save snapshot for agent
+                        snapshot_file = save_incident_snapshot(frame, "WEAPON")
+                        snapshot_abs = os.path.abspath(snapshot_file) if snapshot_file else None
+                        
+                        agent.handle_security_event({
+                            "type": "WEAPON_DETECTED",
+                            "timestamp": datetime.utcnow().isoformat(),
+                            "location": f"Camera {camera_id}",
+                            "weapon_type": detection_results["weapons"][0]["label"] if detection_results["weapons"] else "Unknown",
+                            "confidence": int(detection_results["weapons"][0]["score"] * 100) if detection_results["weapons"] else 0,
+                            "snapshot_path": snapshot_abs
+                        })
             
             except Exception as e:
                 logger.error(f"Error processing frame for Camera {camera_id}: {e}")
@@ -328,6 +364,22 @@ async def startup_event():
         )
         thread.start()
         logger.info(f"Camera {camera_id} processing thread started")
+
+@app.post("/api/agent/activate")
+async def activate_agent(phone_number: str = Form(...)):
+    """Activate the AI Agent"""
+    try:
+        agent.activate(phone = phone_number)
+        return {"status": "activated", "message": "Agent activated successfully"}
+    except Exception as e:
+        logger.error(f"Failed to activate agent: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/agent/deactivate")
+async def deactivate_agent():
+    """Deactivate the AI Agent"""
+    agent.deactivate()
+    return {"status": "deactivated"}
 
 
 @app.get("/api/health")
@@ -557,6 +609,17 @@ async def verify_visitor_otp(
                 "timestamp": datetime.utcnow()
             }
             access_logs_collection.insert_one(access_log)
+            
+            # Notify Agent
+            if agent and agent.is_active:
+                agent.handle_security_event({
+                    "type": "AUTHORIZED_ENTRY",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "location": "Main Gate",
+                    "person_count": 1,
+                    "method": "OTP",
+                    "visitor_id": visitor_id
+                })
         
         return {
             "success": result["success"],

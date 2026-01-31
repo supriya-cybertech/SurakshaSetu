@@ -40,6 +40,8 @@ export default function IncidentLog() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
               type="text"
+              name="search"
+              autoComplete="off"
               placeholder="Search incidents..."
               className="input-field pl-10 w-full md:w-64"
             />

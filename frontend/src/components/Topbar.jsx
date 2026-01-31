@@ -28,6 +28,8 @@ export default function Topbar({ title, isConnected, notifications = [] }) {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-primary-500 transition-colors" />
                     <input
                         type="text"
+                        name="search"
+                        autoComplete="off"
                         placeholder="Search logs, residents..."
                         className="bg-dark-800 border border-dark-700 text-sm text-gray-200 rounded-full pl-10 pr-4 py-1.5 w-64 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
                     />
