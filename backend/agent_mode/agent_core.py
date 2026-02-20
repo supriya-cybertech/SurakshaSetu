@@ -9,7 +9,7 @@ from typing import Dict, Any
 # Ensure backend root is in path if running from here
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from whatsapp_integration.whatsapp_handler import WhatsAppHandler
+from whatsapp_automation.whatsapp_handler import WhatsAppHandler
 from agent_mode.event_processor import EventProcessor
 from agent_mode.decision_engine import DecisionEngine
 from automation.priority_manager import PriorityManager
