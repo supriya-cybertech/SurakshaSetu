@@ -1,32 +1,18 @@
-from pymongo import MongoClient
-import os
-import sys
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-# MongoDB Configuration
-# Using the user-provided Atlas connection string
-MONGODB_URL = "mongodb+srv://kumari200supriya_db_user:3S0e4DjTrVzb03cE@cluster0.moogy28.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+# Supabase PostgreSQL URL
+# Assuming password is 'X_sibam@8604' without brackets
+SQLALCHEMY_DATABASE_URL = "postgresql://postgres.aoyebxrzriqktmtmjfgr:Suraksha1234@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres"
 
-try:
-    print(f"Connecting to MongoDB Atlas...")
-    client = MongoClient(MONGODB_URL)
-    
-    # Verify connection
-    client.admin.command('ping')
-    print("✅ Connected to MongoDB Atlas successfully!")
-    
-    db = client["suraksha_setu_db"]
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"sslmode": "require"})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    # Collections
-    residents_collection = db["residents"]
-    visitors_collection = db["visitors"]
-    incident_logs_collection = db["incident_logs"]
-    access_logs_collection = db["access_logs"]
-    camera_configs_collection = db["camera_configs"]
-
-except Exception as e:
-    print(f"❌ Failed to connect to MongoDB: {e}")
-    # Fallback to avoid immediate crash, but app won't work well
-    sys.exit(1)
+Base = declarative_base()
 
 def get_db():
-    return db
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

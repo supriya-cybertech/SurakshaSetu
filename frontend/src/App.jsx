@@ -5,12 +5,15 @@ import LiveMonitoring from './pages/LiveMonitoring';
 import IncidentLog from './pages/IncidentLog';
 import Settings from './pages/Settings';
 import AlertToast from './components/AlertToast';
+import LandingPage from './pages/LandingPage';
+import Analytics from './pages/Analytics';
+import { Toaster } from 'react-hot-toast';
 
 // WebSocket URL
 const WS_URL = 'ws://localhost:8000/ws/alerts';
 
 function App() {
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useState('landing');
   const [wsConnected, setWsConnected] = useState(false);
   const [socket, setSocket] = useState(null);
 
@@ -19,8 +22,19 @@ function App() {
   const [cameraFrames, setCameraFrames] = useState({});
   const [stats, setStats] = useState(null);
 
+  // Calculate active alerts per camera for LiveMonitoring
+  const alertingCameras = {};
+  alertNotifications.forEach(alert => {
+    if (!alertingCameras[alert.camera_id]) {
+      alertingCameras[alert.camera_id] = alert;
+    }
+  });
+
   // Initialize WebSocket
   useEffect(() => {
+    // Only connect WS if not on landing page to save resources
+    if (activePage === 'landing') return;
+
     const connectWs = () => {
       const ws = new WebSocket(WS_URL);
 
@@ -70,41 +84,26 @@ function App() {
       if (wsInstance) wsInstance.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activePage]);
 
   const addAlert = (alert) => {
-    setAlertNotifications(prev => [alert, ...prev].slice(0, 5)); // Keep last 5
+    setAlertNotifications(prev => [alert, ...prev].slice(0, 5));
   };
 
   const removeAlert = () => {
-    // Logic to dismiss top alert
     setAlertNotifications(prev => prev.slice(1));
-  };
-
-
-  // Routing Logic
-  const renderPage = () => {
-    switch (activePage) {
-      case 'dashboard':
-        return <Dashboard stats={stats} />;
-      case 'live':
-        return <LiveMonitoring cameraFrames={cameraFrames} alertingCameras={{}} />; // Pass alerts map if needed
-      case 'incidents':
-        return <IncidentLog />;
-      case 'settings':
-        return <Settings />;
-      default:
-        return <Dashboard stats={stats} />;
-    }
   };
 
   // Determine Page Title
   const titles = {
     dashboard: 'System Overview',
+    analytics: 'Performance Analytics',
     live: 'Live Surveillance Grid',
     incidents: 'Incident Access Logs',
     settings: 'System Configuration'
   };
+
+  if (activePage === 'landing') return <LandingPage onEnterApp={() => setActivePage('dashboard')} />;
 
   return (
     <Layout
@@ -113,7 +112,11 @@ function App() {
       title={titles[activePage]}
       isConnected={wsConnected}
     >
-      {renderPage()}
+      {activePage === 'dashboard' && <Dashboard stats={stats} />}
+      {activePage === 'analytics' && <Analytics />}
+      {activePage === 'live' && <LiveMonitoring cameraFrames={cameraFrames} alertingCameras={alertingCameras} />}
+      {activePage === 'incidents' && <IncidentLog />}
+      {activePage === 'settings' && <Settings />}
 
       {/* Global Alert Toasts */}
       {alertNotifications.length > 0 && (
@@ -122,6 +125,7 @@ function App() {
           onClose={removeAlert}
         />
       )}
+      <Toaster position="top-center" />
     </Layout>
   );
 }

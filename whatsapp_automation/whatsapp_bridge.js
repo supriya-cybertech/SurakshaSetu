@@ -35,25 +35,26 @@ function initializeWhatsApp() {
     // Message received
     client.on('message', async (message) => {
         console.log('Received:', message.body);
-        // Forward to Python backend (Assuming Python runs on 8000 or similar, but script says 5000)
-        // We will try sending to the FastAPI defined endpoint or a dedicated agent endpoint
-        // For now, let's assume the agent core exposes this.
-        // Or we can just log it if no backend is listening yet.
+
+        // Forward to Python backend
         try {
-            // Using standard fetch (Node 18+) or need axios/node-fetch if older.
-            // Let's assume standard fetch is available or we use axios if installed.
-            // We'll stick to basic implementation from plan.
-            /*
-            await fetch('http://localhost:8000/agent/command', {
+            const body = {
+                from: message.from,
+                body: message.body,
+                timestamp: new Date().toISOString()
+            };
+
+            // detailed log
+            console.log("Forwarding to backend:", body);
+
+            // Use dynamic import for node-fetch or standard fetch if available (Node 18+)
+            const response = await fetch('http://localhost:8000/api/whatsapp/webhook', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    from: message.from,
-                    message: message.body,
-                    timestamp: new Date()
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
             });
-            */
+
+            console.log("Backend response:", response.status);
         } catch (e) {
             console.log('Error forwarding message:', e.message);
         }

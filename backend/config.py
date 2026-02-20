@@ -45,3 +45,9 @@ FEATURES = {
     "record_snapshots": True,
     "data_privacy_mode": True
 }
+
+# Automated Response List
+SECURITY_GUARDS = [
+    {"name": "Head Guard", "phone": "1234567890"}, # Replace with actual numbers
+    {"name": "Patrol Unit 1", "phone": "0987654321"}
+]

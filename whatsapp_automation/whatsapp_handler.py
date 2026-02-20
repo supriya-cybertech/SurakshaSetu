@@ -28,55 +28,67 @@ class WhatsAppHandler:
         except:
             return False
     
-    def send_message(self, message: str) -> bool:
-        """Send text message"""
-        if not self.user_number:
-            print("Error: User number not set")
+    def send_message(self, message: str, number: Optional[str] = None) -> bool:
+        """Send text message. If number is provided, it overrides self.user_number"""
+        target = number or self.user_number
+        if not target:
+            print("Error: Recipient number not set")
             return False
             
         try:
             response = requests.post(
                 f'{self.bridge_url}/send',
-                json={'number': self.user_number, 'message': message}
+                json={'number': target, 'message': message}
             )
             return response.json().get('success', False)
         except Exception as e:
-            print(f"Error sending message: {e}")
+            print(f"Error sending message to {target}: {e}")
             return False
     
-    def send_snapshot(self, image_path: str, caption: str = '') -> bool:
-        """Send image with caption"""
-        if not self.user_number:
-            print("Error: User number not set")
+    def send_snapshot(self, image_path: str, caption: str = '', number: Optional[str] = None) -> bool:
+        """Send image with caption. If number is provided, it overrides self.user_number"""
+        target = number or self.user_number
+        if not target:
+            print("Error: Recipient number not set")
             return False
             
         try:
-            # Check if file exists to avoid bridge errors
             import os
             if not os.path.exists(image_path):
                 print(f"Error: Snapshot file not found at {image_path}")
                 return False
 
-            # Convert to absolute path if needed, bridge usually handles it but better safe
             abs_path = os.path.abspath(image_path)
             
             response = requests.post(
                 f'{self.bridge_url}/send-media',
                 json={
-                    'number': self.user_number,
+                    'number': target,
                     'mediaPath': abs_path,
                     'caption': caption
                 }
             )
             return response.json().get('success', False)
         except Exception as e:
-            print(f"Error sending snapshot: {e}")
+            print(f"Error sending snapshot to {target}: {e}")
             return False
-    
-    def send_video(self, video_path: str, caption: str = '') -> bool:
-        """Send video with caption"""
-        return self.send_snapshot(video_path, caption)  # Same API for media
-    
+
+    def broadcast_message(self, numbers: list, message: str):
+        """Send message to multiple recipients"""
+        results = {}
+        for num in numbers:
+            success = self.send_message(message, number=num)
+            results[num] = success
+        return results
+
+    def broadcast_snapshot(self, numbers: list, image_path: str, caption: str = ''):
+        """Send snapshot to multiple recipients"""
+        results = {}
+        for num in numbers:
+            success = self.send_snapshot(image_path, caption, number=num)
+            results[num] = success
+        return results
+
     def set_user_number(self, number: str):
-        """Set recipient phone number"""
+        """Set default recipient phone number"""
         self.user_number = number
